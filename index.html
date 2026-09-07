@@ -652,6 +652,7 @@ function optimierePhase(){
       ? "Diese Phase ist mit den freigegebenen Futtermitteln nicht zu erreichen. Meist liegt es am Höchstanteil beim Eiweißfutter, an fehlendem Öl für die Energie oder an einem Fix-Anteil, der die Rechnung blockiert."
       : "Die Rechnung ist nicht durchgelaufen. Prüfe die Grenzen auf Widersprüche, etwa Min größer als Max.";
     S.dualKomp=null; S.dualNaehr=null;
+    zeichneRation(); zeichnePanel(); zeichneKennzahlen();
     return;
   }
   S.anteile = r.x.map(v=> Math.abs(v)<1e-7?0:Math.round(v*1000)/1000);
@@ -665,7 +666,7 @@ function optimierePhase(){
   });
   box.className="hinweis zeig gut";
   box.textContent="Kostenoptimale Mischung für "+p.name+": "+z2(kostenT(),2)+" €/t. Alle Vorgaben eingehalten.";
-  zeichneRation();
+  zeichneRation(); zeichnePanel(); zeichneKennzahlen();
 }
 
 /* ==========================================================
