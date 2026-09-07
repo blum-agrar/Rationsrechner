@@ -276,10 +276,15 @@
   <div class="aktionen">
     <button class="act" id="btnSpeichern">Daten sichern</button>
     <button class="act" id="btnLadenTrigger">Daten laden</button>
+    <button class="act" id="btnTeilen">Link zum Teilen</button>
     <button class="act" id="btnDruck">Drucken</button>
     <button class="act" id="btnReset">Startwerte</button>
     <input type="file" id="fileLaden" accept=".json" hidden>
   </div>
+  <div class="hinweis" id="teilenHinweis"></div>
+  <p class="mini">Der Stand wird laufend im Browser gemerkt und beim nächsten Öffnen wiederhergestellt.
+    „Link zum Teilen“ packt den ganzen Stand in eine Adresse hinter dem Kreuzzeichen (#) — sie geht nie
+    an einen Server, nur an die Person, die den Link bekommt.</p>
 
   <p class="fuss">
     Nähr- und Bedarfswerte sind Richtwerte aus Futterwerttabellen und den üblichen Empfehlungen zur
@@ -498,8 +503,8 @@ const GRUPPENGRENZEN_START = [
    3  Zustand
    ========================================================== */
 let S;
-function initZustand(){
-  S = {
+function neuerZustand(){
+  const st = {
     futter: JSON.parse(JSON.stringify(FUTTER_START)),
     gruppen: JSON.parse(JSON.stringify(GRUPPEN_START)),
     kulturen: JSON.parse(JSON.stringify(KULTUREN_START)),
@@ -510,12 +515,92 @@ function initZustand(){
     anteile:[], fix:[], minA:[], maxA:[],
     dualKomp:null, dualNaehr:null, plan:null
   };
-  S.anteile = S.futter.map(()=>0);
-  S.fix     = S.futter.map(()=>false);
-  S.minA    = S.futter.map(f=> f.minAnt!==undefined ? f.minAnt : 0);
-  S.maxA    = S.futter.map(f=> f.maxAnt!==undefined ? f.maxAnt : 100);
+  st.anteile = st.futter.map(()=>0);
+  st.fix     = st.futter.map(()=>false);
+  st.minA    = st.futter.map(f=> f.minAnt!==undefined ? f.minAnt : 0);
+  st.maxA    = st.futter.map(f=> f.maxAnt!==undefined ? f.maxAnt : 100);
+  return st;
 }
+function initZustand(){ S = neuerZustand(); }
 initZustand();
+
+/* ==========================================================
+   3b  Speichern, Wiederherstellen und Teilen
+   ========================================================== */
+const STAND_VERSION = 2;
+const SPEICHER_SCHLUESSEL = "putenplanung.stand.v1";
+
+// dualKomp/dualNaehr/plan sind Rechenergebnisse des letzten Rechenlaufs, kein
+// Bestandteil der Eingaben - sie werden nicht gesichert und beim Laden neu berechnet.
+function serialisierbarerZustand(){
+  const {dualKomp, dualNaehr, plan, ...rest} = S;
+  return rest;
+}
+function standObjekt(){
+  return {version:STAND_VERSION, asModus, S: serialisierbarerZustand()};
+}
+
+const STAND_FELDER = {
+  futter:Array.isArray, gruppen:v=>v && typeof v==="object" && !Array.isArray(v),
+  kulturen:Array.isArray, kgrenzen:Array.isArray,
+  gruppeAktiv:v=>typeof v==="string", phaseAktiv:v=>typeof v==="number",
+  durchgaenge:v=>typeof v==="number", tiere:v=>typeof v==="number",
+  verluste:v=>typeof v==="number", reserve:v=>typeof v==="number",
+  modus:v=>typeof v==="string", flaeche:v=>typeof v==="number",
+  anteile:Array.isArray, fix:Array.isArray, minA:Array.isArray, maxA:Array.isArray
+};
+
+// Uebernimmt einen gespeicherten, geladenen oder per Link geteilten Stand. Prueft
+// Versionsnummer und Grundform, gleicht Feldlaengen an fehlende oder verschobene
+// Futtermittel an und macht die Uebernahme bei einem unerwarteten Fehler rueckgaengig -
+// damit ein unlesbarer oder aelterer Stand nie zu einer kaputten Seite fuehrt.
+function versucheStandUebernehmen(d){
+  if(!d || typeof d!=="object" || !d.S || typeof d.S!=="object") return {ok:false, grund:"format"};
+  const version = typeof d.version==="number" ? d.version : 1;
+  if(version > STAND_VERSION) return {ok:false, grund:"neuer"};
+  const vorherS=S, vorherAs=asModus;
+  try{
+    const neu = neuerZustand();
+    Object.keys(STAND_FELDER).forEach(k=>{
+      if(STAND_FELDER[k](d.S[k])) neu[k]=d.S[k];
+    });
+    if(!Array.isArray(neu.futter) || neu.futter.length===0) throw new Error("futter");
+    const n=neu.futter.length;
+    if(!Array.isArray(neu.anteile) || neu.anteile.length!==n) neu.anteile=neu.futter.map(()=>0);
+    if(!Array.isArray(neu.fix) || neu.fix.length!==n) neu.fix=neu.futter.map(()=>false);
+    if(!Array.isArray(neu.minA) || neu.minA.length!==n) neu.minA=neu.futter.map(f=>f.minAnt!==undefined?f.minAnt:0);
+    if(!Array.isArray(neu.maxA) || neu.maxA.length!==n) neu.maxA=neu.futter.map(f=>f.maxAnt!==undefined?f.maxAnt:100);
+    if(!neu.gruppen[neu.gruppeAktiv] || !Array.isArray(neu.gruppen[neu.gruppeAktiv].phasen)) neu.gruppeAktiv="haehne";
+    if(!neu.gruppen[neu.gruppeAktiv]) throw new Error("gruppen");
+    const anzPhasen=neu.gruppen[neu.gruppeAktiv].phasen.length;
+    if(typeof neu.phaseAktiv!=="number" || neu.phaseAktiv<0 || neu.phaseAktiv>=anzPhasen) neu.phaseAktiv=0;
+    neu.dualKomp=null; neu.dualNaehr=null; neu.plan=null;
+    S=neu; asModus = d.asModus==="pcv" ? "pcv" : "brutto";
+    document.getElementById("selGruppe").innerHTML="";
+    zeichnen();
+    return {ok:true};
+  }catch(e){
+    S=vorherS; asModus=vorherAs;
+    return {ok:false, grund:"inhalt"};
+  }
+}
+
+let speicherTimer=null;
+function standSofortSpeichern(){
+  try{ localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify(standObjekt())); }
+  catch(e){ /* Speicher voll oder gesperrt - der Stand bleibt nur in diesem Tab erhalten */ }
+}
+function standVerzoegertSpeichern(){
+  clearTimeout(speicherTimer);
+  speicherTimer=setTimeout(standSofortSpeichern, 600);
+}
+function gespeichertenStandLaden(){
+  try{
+    const raw=localStorage.getItem(SPEICHER_SCHLUESSEL);
+    if(!raw) return;
+    versucheStandUebernehmen(JSON.parse(raw));
+  }catch(e){ /* gespeicherter Stand unlesbar - Startwerte bleiben erhalten */ }
+}
 
 const z2  = (v,d)=> (v===null||v===undefined||isNaN(v)) ? "–" : v.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
 const nz  = v => { const x=parseFloat(String(v).replace(",",".")); return isNaN(x)?0:x; };
@@ -1104,7 +1189,7 @@ document.getElementById("btnUebernehmen").addEventListener("click",()=>{
 });
 
 document.getElementById("btnSpeichern").addEventListener("click",()=>{
-  const blob=new Blob([JSON.stringify({version:2,asModus,S},null,1)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify(standObjekt(),null,1)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="putenplanung-"+new Date().toISOString().slice(0,10)+".json";
@@ -1115,30 +1200,130 @@ document.getElementById("fileLaden").addEventListener("change",e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
   rd.onload=()=>{
-    try{
-      const d=JSON.parse(rd.result);
-      if(!d.S) throw new Error("Format");
-      S=d.S; asModus=d.asModus||"brutto";
-      document.getElementById("selGruppe").innerHTML="";
-      zeichnen();
-    }catch(err){
-      const box=document.getElementById("gesamtHinweis");
+    const box=document.getElementById("gesamtHinweis");
+    let d=null;
+    try{ d=JSON.parse(rd.result); }catch(err){ d=null; }
+    const r = d ? versucheStandUebernehmen(d) : {ok:false,grund:"format"};
+    if(!r.ok){
       box.className="hinweis zeig schlecht";
-      box.textContent="Diese Datei ließ sich nicht lesen. Es muss eine mit diesem Programm gesicherte JSON-Datei sein.";
+      box.textContent = r.grund==="neuer"
+        ? "Diese Datei stammt aus einer neueren Version des Programms. Bitte die Seite neu laden und die Datei erneut laden."
+        : "Diese Datei ließ sich nicht lesen. Es muss eine mit diesem Programm gesicherte Datei sein.";
+    } else {
+      standSofortSpeichern();
     }
   };
   rd.readAsText(f); e.target.value="";
 });
 document.getElementById("btnDruck").addEventListener("click",()=>window.print());
 document.getElementById("btnReset").addEventListener("click",()=>{
+  if(!confirm("Wirklich alle Eingaben auf die Startwerte zurücksetzen? Der gemerkte Stand geht dabei verloren.")) return;
   initZustand(); asModus="brutto";
   document.getElementById("selGruppe").innerHTML="";
   document.getElementById("optHinweis").className="hinweis";
   document.getElementById("gesamtHinweis").className="hinweis";
   zeichnen();
+  standSofortSpeichern();
 });
 
+/* ==========================================================
+   8  Automatisch merken und Link zum Teilen
+   ========================================================== */
+function bytesZuBase64url(bytes){
+  let bin="";
+  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function base64urlZuBytes(s){
+  let b64=s.replace(/-/g,"+").replace(/_/g,"/");
+  while(b64.length%4) b64+="=";
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes;
+}
+async function textKomprimieren(text){
+  const cs=new CompressionStream("gzip");
+  const writer=cs.writable.getWriter();
+  writer.write(new TextEncoder().encode(text)); writer.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+async function textEntpacken(bytes){
+  const ds=new DecompressionStream("gzip");
+  const writer=ds.writable.getWriter();
+  writer.write(bytes); writer.close();
+  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+}
+// "g" = gzip + base64url, "p" = nur base64url (Rueckfallweg ohne CompressionStream)
+async function teilenAdresseErzeugen(){
+  const text=JSON.stringify(standObjekt());
+  let kennung="p", payload;
+  try{
+    if(typeof CompressionStream!=="undefined"){
+      payload=bytesZuBase64url(await textKomprimieren(text));
+      kennung="g";
+    } else {
+      payload=bytesZuBase64url(new TextEncoder().encode(text));
+    }
+  }catch(e){
+    payload=bytesZuBase64url(new TextEncoder().encode(text));
+    kennung="p";
+  }
+  return location.origin+location.pathname+location.search+"#teilen="+kennung+"."+payload;
+}
+async function teilenAdresseLesen(kennung,payload){
+  const bytes=base64urlZuBytes(payload);
+  const text = kennung==="g" ? await textEntpacken(bytes) : new TextDecoder().decode(bytes);
+  return JSON.parse(text);
+}
+
+document.getElementById("btnTeilen").addEventListener("click",async ()=>{
+  const box=document.getElementById("teilenHinweis");
+  try{
+    const url=await teilenAdresseErzeugen();
+    try{
+      await navigator.clipboard.writeText(url);
+      box.className="hinweis zeig gut";
+      box.textContent="Link kopiert. Beim Öffnen fragt das Programm nach, ob der Stand übernommen werden soll.";
+    }catch(e){
+      box.className="hinweis zeig gut";
+      box.innerHTML="Kopieren war nicht möglich. Diesen Link von Hand kopieren:<br>"+
+        "<input type=\"text\" readonly style=\"width:100%;margin-top:6px\" value=\""+url.replace(/"/g,"&quot;")+"\">";
+    }
+  }catch(e){
+    box.className="hinweis zeig schlecht";
+    box.textContent="Der Link ließ sich nicht erzeugen.";
+  }
+});
+
+// Automatisch merken: nach jeder Eingabe verzoegert sichern, damit Tippen nicht ruckelt.
+document.addEventListener("input", standVerzoegertSpeichern);
+document.addEventListener("change", standVerzoegertSpeichern);
+document.addEventListener("click", standVerzoegertSpeichern);
+
+gespeichertenStandLaden();
 zeichnen();
+
+// Mit einem Teilen-Link geoeffnet? Einmal nachfragen, nie ungefragt uebernehmen,
+// und das Fragment danach in jedem Fall aus der Adresszeile entfernen.
+(function geteiltenStandPruefen(){
+  const hash=location.hash;
+  if(!hash.startsWith("#teilen=")) return;
+  const hashEntfernen=()=> history.replaceState(null,"",location.pathname+location.search);
+  const rest=hash.slice(8);
+  const punkt=rest.indexOf(".");
+  if(punkt<1){ hashEntfernen(); return; }
+  const kennung=rest.slice(0,punkt), payload=rest.slice(punkt+1);
+  teilenAdresseLesen(kennung,payload).then(d=>{
+    if(confirm("Ein geteilter Stand wurde in diesem Link gefunden. Diesen jetzt übernehmen? Der bisher gemerkte Stand wird dabei ersetzt.")){
+      const r=versucheStandUebernehmen(d);
+      if(r.ok) standSofortSpeichern();
+      else alert("Der geteilte Stand ließ sich nicht übernehmen. Er passt nicht zu dieser Version des Programms.");
+    }
+  }).catch(()=>{
+    alert("Der Link ließ sich nicht lesen.");
+  }).finally(hashEntfernen);
+})();
 </script>
 </body>
 </html>
