@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Putenrationen und Anbauplanung</title>
+<style>
+  :root{
+    --paper:#F7F8F6; --card:#FFFFFF; --ink:#17211D; --ink-2:#5A665F;
+    --line:#DCE0D8; --line-2:#EDEFEA; --accent:#1F5D3F; --accent-soft:#E7F0E9;
+    --gold:#B08A22; --low:#A62B1F; --high:#B4531F; --ok:#2E7D4F;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-size:14px;line-height:1.45}
+  .num{font-variant-numeric:tabular-nums}
+  header{background:var(--accent);color:#EAF1EC;padding:14px 22px 0}
+  .head-top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:22px;justify-content:space-between}
+  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-.2px}
+  h1 span{display:block;font-size:12px;font-weight:400;opacity:.75}
+  .kennzahlen{display:flex;gap:26px;align-items:flex-end}
+  .kz-wert{font-size:25px;font-weight:600;line-height:1;letter-spacing:-.5px}
+  .kz-label{font-size:11px;opacity:.75}
+  .kopfzeile{margin:10px 0 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:12.5px;padding-bottom:10px}
+  .kopfzeile select,.kopfzeile input{font:inherit;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#EAF1EC}
+  .kopfzeile select option{color:#17211D}
+  .kopfzeile input{width:74px;text-align:right;font-variant-numeric:tabular-nums}
+  .phasen{display:flex;gap:2px;flex-wrap:wrap}
+  .phasen button{background:rgba(255,255,255,.12);color:#EAF1EC;border:0;padding:7px 13px;font:inherit;font-size:12.5px;cursor:pointer;border-radius:4px 4px 0 0}
+  .phasen button:hover{background:rgba(255,255,255,.22)}
+  .phasen button[aria-pressed="true"]{background:var(--paper);color:var(--ink);font-weight:600}
+  main{padding:18px 22px 60px}
+  .tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+  .tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 2px;font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+  .tabs button[aria-pressed="true"]{color:var(--ink);border-color:var(--accent);font-weight:600}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:20px;align-items:start}
+  @media(max-width:1120px){.split{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:16px}
+  .card > h2{font-size:13px;font-weight:600;margin:0;padding:10px 14px;border-bottom:1px solid var(--line-2)}
+  .card-body{padding:12px 14px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line-2)}
+  th{font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap;vertical-align:bottom}
+  td:first-child,th:first-child{text-align:left}
+  tbody tr:hover{background:#FBFCFA}
+  tfoot td{font-weight:600;border-top:1px solid var(--line);border-bottom:0}
+  input[type=number],input[type=text],select.zelle{font:inherit;font-size:13px;font-variant-numeric:tabular-nums;width:100%;max-width:84px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink)}
+  input[type=text],select.zelle{text-align:left;max-width:100%}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+  input.locked{background:var(--accent-soft);border-color:#BBD3C2;font-weight:600}
+  .grp{background:#F3F5F1;font-size:11px;font-weight:600;color:var(--ink-2)}
+  .grp td{padding:5px 6px}
+  .rm{border:0;background:none;color:var(--ink-2);cursor:pointer;font-size:15px;line-height:1;padding:0 4px}
+  .rm:hover{color:var(--low)}
+  .n-zeile{display:grid;grid-template-columns:100px 58px 66px 1fr 62px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line-2)}
+  .n-name{font-size:12.5px}
+  .n-ist{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  .n-soll{text-align:right;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .n-dual{text-align:right;font-size:11.5px;color:var(--gold);font-variant-numeric:tabular-nums}
+  .bar{height:7px;background:var(--line-2);border-radius:4px;position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ok);border-radius:4px}
+  .bar.u i{background:var(--low)} .bar.o i{background:var(--high)}
+  .bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.45}
+  .kosten-box{display:flex;gap:20px;padding:10px 14px;border-bottom:1px solid var(--line-2);background:#FCFCFA}
+  .kosten-box div span{display:block;font-size:11px;color:var(--ink-2)}
+  .kosten-box div b{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+  .aktionen{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+  button.act{font:inherit;font-size:13px;padding:7px 14px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink)}
+  button.act:hover{border-color:var(--accent);color:var(--accent)}
+  button.act.prim{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.act.prim:hover{background:#18502F;color:#fff}
+  .hinweis{margin-top:10px;padding:9px 12px;border-radius:4px;font-size:12.5px;display:none}
+  .hinweis.zeig{display:block}
+  .hinweis.gut{background:var(--accent-soft);color:#17402C}
+  .hinweis.schlecht{background:#F7E6E3;color:#7A2118}
+  .mini{font-size:11.5px;color:var(--ink-2);margin:2px 0 10px;max-width:88ch;line-height:1.55}
+  .fuss{margin-top:26px;font-size:11.5px;color:var(--ink-2);max-width:78ch;line-height:1.6}
+  .marke{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600}
+  .marke.fuettern{background:var(--accent-soft);color:#17402C}
+  .marke.verkaufen{background:#FBF0D8;color:#6B5210}
+  .feldzeile{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+  .feld{display:flex;flex-direction:column;gap:3px}
+  .feld label{font-size:11px;color:var(--ink-2)}
+  .feld input,.feld select{max-width:150px;text-align:left}
+  .feld input[type=number]{text-align:right;max-width:110px}
+  @media print{header{background:#fff;color:#000}.tabs,.aktionen,.phasen{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-top">
+    <h1>Putenrationen und Anbauplanung<span>Rationsberechnung, Fruchtfolge und innerbetriebliche Verwertung in einem Modell</span></h1>
+    <div class="kennzahlen">
+      <div><div class="kz-wert num" id="kzKosten">–</div><div class="kz-label">€/t in dieser Phase</div></div>
+      <div><div class="kz-wert num" id="kzSumme">0,0</div><div class="kz-label">% Einwaage</div></div>
+      <div><div class="kz-wert num" id="kzStatus">–</div><div class="kz-label">Vorgaben erfüllt</div></div>
+    </div>
+  </div>
+  <div class="kopfzeile">
+    <label>Tiergruppe <select id="selGruppe"></select></label>
+    <label>Aminosäuren <select id="selAS">
+      <option value="brutto">Gesamt (brutto)</option>
+      <option value="pcv">praecaecal verdaulich</option>
+    </select></label>
+    <div class="phasen" id="phasenLeiste"></div>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button data-tab="ration" aria-pressed="true">Ration</button>
+    <button data-tab="jahr" aria-pressed="false">Jahresplan</button>
+    <button data-tab="flaechen" aria-pressed="false">Flächen</button>
+    <button data-tab="ergebnis" aria-pressed="false">Gesamtplan</button>
+    <button data-tab="futter" aria-pressed="false">Futtermittel</button>
+    <button data-tab="normen" aria-pressed="false">Bedarfsnormen</button>
+  </div>
+
+  <!-- ============ RATION ============ -->
+  <section id="tab-ration">
+    <div class="split">
+      <div>
+        <div class="card">
+          <h2>Einsatz je 100 kg Mischung</h2>
+          <div class="card-body">
+            <p class="mini">„Fix“ hält einen Anteil bei der Optimierung fest. Die Spalte „Grenzwert“ erscheint nach dem Rechnen: sie zeigt, was ein zusätzlicher Prozentpunkt Spielraum bei dieser Komponente je Tonne Futter sparen würde.</p>
+            <table id="tabMischung">
+              <thead><tr>
+                <th>Futtermittel</th><th style="width:76px">Anteil %</th><th style="width:44px">Fix</th>
+                <th style="width:62px">Min %</th><th style="width:62px">Max %</th><th style="width:70px">€/t</th>
+                <th style="width:74px">€/t Anteil</th><th style="width:82px">Grenzwert</th>
+              </tr></thead>
+              <tbody></tbody>
+              <tfoot><tr><td>Summe</td><td class="num" id="mSumme"></td><td colspan="4"></td><td class="num" id="mKosten"></td><td></td></tr></tfoot>
+            </table>
+            <div class="aktionen">
+              <button class="act prim" id="btnOpt">Diese Phase optimieren</button>
+              <button class="act" id="btnAuf100">Auf 100 % normieren</button>
+              <button class="act" id="btnLeeren">Anteile leeren</button>
+            </div>
+            <div class="hinweis" id="optHinweis"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Abgleich mit der Phase</h2>
+        <div class="kosten-box">
+          <div><span>Mischfutter</span><b class="num" id="preisT">–</b><span>€/t</span></div>
+          <div><span>Je dt</span><b class="num" id="preisDt">–</b><span>€/dt</span></div>
+        </div>
+        <div class="card-body">
+          <div id="naehrPanel"></div>
+          <p class="mini" style="margin-top:10px">Die rechte Spalte zeigt nach dem Optimieren den Schattenpreis: was ein Zehntel mehr Energie bzw. ein Hundertstel Prozentpunkt mehr vom jeweiligen Nährstoff je Tonne Futter kostet. Hohe Werte zeigen, wo die Ration wirklich klemmt.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JAHRESPLAN ============ -->
+  <section id="tab-jahr" hidden>
+    <div class="card">
+      <h2>Durchgänge und Futterbedarf</h2>
+      <div class="card-body">
+        <div class="feldzeile">
+          <div class="feld"><label>Durchgänge je Jahr</label><input type="number" id="inDurchgaenge" step="1" min="0"></div>
+          <div class="feld"><label>Tiere je Durchgang</label><input type="number" id="inTiere" step="100" min="0"></div>
+          <div class="feld"><label>Verluste %</label><input type="number" id="inVerluste" step="0.5" min="0"></div>
+          <div class="feld"><label>Futterreserve %</label><input type="number" id="inReserve" step="1" min="0"></div>
+        </div>
+        <p class="mini">Der Futterverbrauch je Tier und Phase ist als Richtwert hinterlegt. Trag hier deine eigenen Zahlen aus der Herde ein — daraus ergibt sich die Tonnage, mit der die Flächenplanung rechnet.</p>
+        <table id="tabJahr">
+          <thead><tr><th>Phase</th><th style="width:120px">kg Futter je Tier</th><th style="width:110px">Bedarf t</th><th style="width:120px">Anteil am Jahr</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td>Gesamt</td><td></td><td class="num" id="jahrSumme"></td><td></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Woher kommt das Futter?</h2>
+      <div class="card-body">
+        <div class="feldzeile">
+          <div class="feld"><label>Planungsart</label>
+            <select id="selModus">
+              <option value="flaeche">Flächen optimieren (was soll ich anbauen?)</option>
+              <option value="vorrat">Vorrat vorgeben (was liegt im Lager?)</option>
+            </select>
+          </div>
+          <div class="feld"><label>Futterbaufläche ha</label><input type="number" id="inFlaeche" step="10" min="0"></div>
+        </div>
+        <p class="mini" id="modusText"></p>
+        <table id="tabVorrat" hidden>
+          <thead><tr><th>Kultur</th><th style="width:130px">verfügbar t</th><th style="width:120px">Verkaufspreis €/t</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLÄCHEN ============ -->
+  <section id="tab-flaechen" hidden>
+    <div class="card">
+      <h2>Kulturen, Erträge und Fruchtfolgegrenzen</h2>
+      <div class="card-body">
+        <p class="mini">Die Höchstanteile sind die ackerbauliche Bremse: sie verhindern, dass die Rechnung dir 50 % Triticale vorschlägt. Setz sie so, wie du die Fruchtfolge auf deinen Schlägen wirklich fahren kannst — Anbaupausen, Vorfruchtwert und Arbeitsspitzen stecken in diesen Zahlen.</p>
+        <div style="overflow-x:auto">
+          <table id="tabKulturen">
+            <thead><tr>
+              <th style="min-width:150px">Kultur</th><th style="min-width:110px">Gruppe</th>
+              <th>Ertrag t/ha</th><th>var. Kosten €/ha</th><th>Verkauf €/t</th>
+              <th>min %</th><th>max %</th><th>DB Verkauf €/ha</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="aktionen"><button class="act" id="btnNeueKultur">Kultur hinzufügen</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Grenzen für Kulturgruppen</h2>
+      <div class="card-body">
+        <p class="mini">Zusätzliche Obergrenze über mehrere Kulturen, zum Beispiel Halmfrucht insgesamt höchstens 70 % der Fläche.</p>
+        <table id="tabGruppen">
+          <thead><tr><th>Gruppe</th><th style="width:110px">max % Fläche</th><th style="width:110px">min % Fläche</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ERGEBNIS ============ -->
+  <section id="tab-ergebnis" hidden>
+    <div class="aktionen" style="margin:0 0 16px">
+      <button class="act prim" id="btnGesamt">Gesamtplan rechnen</button>
+      <button class="act" id="btnUebernehmen" disabled>Rezepturen in die Ration übernehmen</button>
+    </div>
+    <div class="hinweis" id="gesamtHinweis"></div>
+    <div id="ergebnisRaum"></div>
+  </section>
+
+  <!-- ============ FUTTERMITTEL ============ -->
+  <section id="tab-futter" hidden>
+    <div class="card">
+      <h2>Nährwerte je kg Ware (88 % TS)</h2>
+      <div class="card-body">
+        <p class="mini">Eigene Analysen gehören hier hinein — bei Getreide vom Sandstandort weicht das Rohprotein leicht um zwei Prozentpunkte vom Tabellenwert ab. „Herkunft“ verknüpft ein Futtermittel mit einer Kultur; nur so kann die Flächenplanung es als Eigenerzeugung einplanen.</p>
+        <div style="overflow-x:auto">
+          <table id="tabFutter">
+            <thead><tr>
+              <th style="min-width:160px">Futtermittel</th><th style="min-width:118px">Herkunft</th>
+              <th>ME<br>MJ/kg</th><th>XP<br>%</th>
+              <th>Lys<br>%</th><th>M+C<br>%</th><th>Thr<br>%</th>
+              <th>pcv Lys<br>%</th><th>pcv M+C<br>%</th><th>pcv Thr<br>%</th>
+              <th>Ca<br>%</th><th>vP<br>%</th><th>Na<br>%</th><th>XL<br>%</th><th>XF<br>%</th>
+              <th>Preis<br>€/t</th><th>max<br>%</th><th>Zukauf</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="aktionen"><button class="act" id="btnNeuesFutter">Futtermittel hinzufügen</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NORMEN ============ -->
+  <section id="tab-normen" hidden>
+    <div class="card">
+      <h2>Bedarfsnormen je Phase</h2>
+      <div class="card-body">
+        <p class="mini" id="normenGruppe"></p>
+        <div style="overflow-x:auto"><table id="tabNormen"><thead><tr id="normKopf"></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="aktionen">
+    <button class="act" id="btnSpeichern">Daten sichern</button>
+    <button class="act" id="btnLadenTrigger">Daten laden</button>
+    <button class="act" id="btnDruck">Drucken</button>
+    <button class="act" id="btnReset">Startwerte</button>
+    <input type="file" id="fileLaden" accept=".json" hidden>
+  </div>
+
+  <p class="fuss">
+    Nähr- und Bedarfswerte sind Richtwerte aus Futterwerttabellen und den üblichen Empfehlungen zur
+    Putenmast. Vorgaben des Züchters und die Werte deines Mischfutterwerks gehen vor. Schattenpreise
+    sind örtliche Steigungen: sie gelten für kleine Änderungen an einer Stelle, nicht für einen Sprung
+    von fünf Prozentpunkten. Der Anbauplan ist eine Deckungsbeitragsrechnung ohne Festkosten, Prämien,
+    Vorfruchtwirkung und Nährstoffverwertung des Wirtschaftsdüngers — die gehören daneben gelegt, bevor
+    daraus ein Anbauplan wird.
+  </p>
+</main>
+
+<script>
+"use strict";
+
+/* ==========================================================
+   1  Simplex mit Dualwerten
+   ========================================================== */
+function simplex(c, A, rel, b){
+  const m = A.length, n = c.length;
+  const M = A.map(r=>r.slice()), rhs = b.slice(), R = rel.slice();
+  for(let i=0;i<m;i++){
+    if(rhs[i] < -1e-12){
+      for(let j=0;j<n;j++) M[i][j] = -M[i][j];
+      rhs[i] = -rhs[i];
+      R[i] = R[i]==="<=" ? ">=" : R[i]===">=" ? "<=" : "=";
+    }
+  }
+  const extra=[], refSpalte=new Array(m).fill(-1), refVz=new Array(m).fill(1);
+  for(let i=0;i<m;i++){
+    if(R[i]==="<=") extra.push({r:i,t:"s",s:1});
+    else if(R[i]===">="){ extra.push({r:i,t:"s",s:-1}); extra.push({r:i,t:"a"}); }
+    else extra.push({r:i,t:"a"});
+  }
+  const total = n + extra.length;
+  const T=[];
+  for(let i=0;i<m;i++){
+    const row=new Float64Array(total+1);
+    for(let j=0;j<n;j++) row[j]=M[i][j];
+    row[total]=rhs[i];
+    T.push(row);
+  }
+  const basis=new Array(m).fill(-1), istArt=new Array(total).fill(false);
+  extra.forEach((e,k)=>{
+    const col=n+k;
+    T[e.r][col] = e.t==="s" ? e.s : 1;
+    if(e.t==="a"){
+      basis[e.r]=col; istArt[col]=true;
+      if(refSpalte[e.r]===-1){ refSpalte[e.r]=col; refVz[e.r]=-1; }
+    } else if(e.s===1){ basis[e.r]=col; refSpalte[e.r]=col; refVz[e.r]=-1; }
+    else { refSpalte[e.r]=col; refVz[e.r]=1; }
+  });
+  const zr=new Float64Array(total+1);
+  function zielzeile(cost){
+    for(let j=0;j<=total;j++) zr[j]=0;
+    for(let j=0;j<total;j++) zr[j]=cost[j];
+    for(let i=0;i<m;i++){
+      const cb=cost[basis[i]];
+      if(cb!==0) for(let j=0;j<=total;j++) zr[j]-=cb*T[i][j];
+    }
+  }
+  function pivot(r,cc){
+    const zeile=T[r], pv=zeile[cc];
+    for(let j=0;j<=total;j++) zeile[j]/=pv;
+    for(let i=0;i<m;i++){
+      if(i===r) continue;
+      const f=T[i][cc];
+      if(Math.abs(f)>1e-13){ const zi=T[i]; for(let j=0;j<=total;j++) zi[j]-=f*zeile[j]; }
+    }
+    const fz=zr[cc];
+    if(Math.abs(fz)>1e-13) for(let j=0;j<=total;j++) zr[j]-=fz*zeile[j];
+    basis[r]=cc;
+  }
+  function loese(erlaubt){
+    let bland=false;
+    for(let it=0; it<40000; it++){
+      let ein=-1, bester=-1e-9;
+      if(bland){ for(let j=0;j<total;j++) if(erlaubt[j] && zr[j]<-1e-9){ ein=j; break; } }
+      else for(let j=0;j<total;j++) if(erlaubt[j] && zr[j]<bester){ bester=zr[j]; ein=j; }
+      if(ein===-1) return "optimal";
+      let aus=-1, best=Infinity;
+      for(let i=0;i<m;i++){
+        const a=T[i][ein];
+        if(a>1e-9){
+          const r=T[i][total]/a;
+          if(r<best-1e-9 || (Math.abs(r-best)<1e-9 && (aus<0 || basis[i]<basis[aus]))){ best=r; aus=i; }
+        }
+      }
+      if(aus===-1) return "unbeschraenkt";
+      pivot(aus,ein);
+      if(it===3000) bland=true;
+    }
+    return "abbruch";
+  }
+  const c1=new Array(total).fill(0);
+  for(let j=0;j<total;j++) if(istArt[j]) c1[j]=1;
+  zielzeile(c1);
+  if(loese(new Array(total).fill(true))!=="optimal") return {ok:false,grund:"rechnung"};
+  let wsum=0; for(let i=0;i<m;i++) if(istArt[basis[i]]) wsum+=T[i][total];
+  if(wsum>1e-6) return {ok:false,grund:"unloesbar"};
+  const c2=new Array(total).fill(0);
+  for(let j=0;j<n;j++) c2[j]=c[j];
+  zielzeile(c2);
+  const erl2=new Array(total).fill(true);
+  for(let j=0;j<total;j++) if(istArt[j]) erl2[j]=false;
+  const st=loese(erl2);
+  if(st!=="optimal") return {ok:false,grund:st==="unbeschraenkt"?"unbeschraenkt":"rechnung"};
+  const x=new Array(n).fill(0);
+  for(let i=0;i<m;i++) if(basis[i]<n) x[basis[i]]=T[i][total];
+  let ziel=0; for(let j=0;j<n;j++) ziel+=c[j]*x[j];
+  const y=new Array(m).fill(0);
+  for(let i=0;i<m;i++){
+    const sp=refSpalte[i];
+    y[i]= sp>=0 ? refVz[i]*zr[sp] : 0;
+    if(Math.abs(y[i])<1e-9) y[i]=0;
+  }
+  return {ok:true,x:x.map(v=>Math.abs(v)<1e-9?0:v),ziel,y};
+}
+
+/* ==========================================================
+   2  Stammdaten
+   ========================================================== */
+const NAEHR_ALLE = [
+  {k:"me",  name:"Energie ME",   einheit:"MJ/kg", dez:2, schritt:0.1,  as:null},
+  {k:"xp",  name:"Rohprotein",   einheit:"%",     dez:1, schritt:0.01, as:null},
+  {k:"lys", name:"Lysin",        einheit:"%",     dez:2, schritt:0.01, as:"brutto"},
+  {k:"mc",  name:"Met+Cystin",   einheit:"%",     dez:2, schritt:0.01, as:"brutto"},
+  {k:"thr", name:"Threonin",     einheit:"%",     dez:2, schritt:0.01, as:"brutto"},
+  {k:"plys",name:"Lysin pcv",    einheit:"%",     dez:2, schritt:0.01, as:"pcv"},
+  {k:"pmc", name:"Met+Cys pcv",  einheit:"%",     dez:2, schritt:0.01, as:"pcv"},
+  {k:"pthr",name:"Threonin pcv", einheit:"%",     dez:2, schritt:0.01, as:"pcv"},
+  {k:"ca",  name:"Calcium",      einheit:"%",     dez:2, schritt:0.01, as:null},
+  {k:"vp",  name:"Phosphor verf.",einheit:"%",    dez:2, schritt:0.01, as:null},
+  {k:"na",  name:"Natrium",      einheit:"%",     dez:2, schritt:0.01, as:null},
+  {k:"xl",  name:"Rohfett",      einheit:"%",     dez:1, schritt:0.01, as:null},
+  {k:"xf",  name:"Rohfaser",     einheit:"%",     dez:1, schritt:0.01, as:null}
+];
+let asModus = "brutto";
+const NAEHR = ()=> NAEHR_ALLE.filter(n=> n.as===null || n.as===asModus);
+
+/* Verdaulichkeit Geflügel: [Lys, M+C, Thr] in Prozent */
+function pcv(f,vLys,vMc,vThr){ f.plys=+(f.lys*vLys/100).toFixed(3); f.pmc=+(f.mc*vMc/100).toFixed(3); f.pthr=+(f.thr*vThr/100).toFixed(3); return f; }
+
+const FUTTER_START = [
+ pcv({n:"Weizen",             g:"Getreide",  kultur:"weizen", zukauf:true, preis:200, maxAnt:60, me:13.8,xp:12.0,lys:0.34,mc:0.44,thr:0.34,ca:0.06,vp:0.12,na:0.01,xl:1.8,xf:2.6},82,87,82),
+ pcv({n:"Triticale",          g:"Getreide",  kultur:"triti",  zukauf:true, preis:180, maxAnt:40, me:13.5,xp:12.5,lys:0.42,mc:0.47,thr:0.38,ca:0.07,vp:0.13,na:0.02,xl:1.6,xf:2.4},83,87,82),
+ pcv({n:"Wintergerste",       g:"Getreide",  kultur:"gerste", zukauf:true, preis:180, maxAnt:25, me:11.9,xp:11.0,lys:0.40,mc:0.42,thr:0.37,ca:0.07,vp:0.13,na:0.02,xl:2.0,xf:4.8},78,82,78),
+ pcv({n:"Winterroggen",       g:"Getreide",  kultur:"roggen", zukauf:true, preis:165, maxAnt:15, me:12.9,xp:9.5, lys:0.36,mc:0.36,thr:0.31,ca:0.07,vp:0.12,na:0.02,xl:1.6,xf:2.3},78,82,76),
+ pcv({n:"Körnermais",         g:"Getreide",  kultur:"mais",   zukauf:true, preis:205, maxAnt:60, me:14.2,xp:8.8, lys:0.25,mc:0.37,thr:0.30,ca:0.03,vp:0.09,na:0.01,xl:4.0,xf:2.2},82,88,83),
+ pcv({n:"Sojaextr.schrot 44 %",g:"Eiweiß",   kultur:null, zukauf:true, preis:450, maxAnt:45, me:9.7, xp:44.0,lys:2.75,mc:1.28,thr:1.72,ca:0.30,vp:0.20,na:0.02,xl:1.8,xf:6.5},91,88,87),
+ pcv({n:"Sojaextr.schrot 48 % HP",g:"Eiweiß",kultur:null, zukauf:true, preis:500, maxAnt:45, me:10.4,xp:48.0,lys:3.00,mc:1.40,thr:1.88,ca:0.30,vp:0.22,na:0.02,xl:1.5,xf:3.5},91,88,87),
+ pcv({n:"Sojakuchen vollfett",g:"Eiweiß",    kultur:null, zukauf:true, preis:550, maxAnt:25, me:13.5,xp:36.0,lys:2.25,mc:1.05,thr:1.42,ca:0.28,vp:0.18,na:0.02,xl:18.0,xf:5.5},88,85,84),
+ pcv({n:"Rapsextr.schrot",    g:"Eiweiß",    kultur:null, zukauf:true, preis:280, maxAnt:8,  me:7.6, xp:34.0,lys:1.90,mc:1.50,thr:1.45,ca:0.75,vp:0.35,na:0.02,xl:2.5,xf:12.5},78,84,78),
+ pcv({n:"Sonnenblumenschrot", g:"Eiweiß",    kultur:null,     zukauf:true, preis:260, maxAnt:6, me:7.3, xp:34.0,lys:1.20,mc:1.30,thr:1.20,ca:0.35,vp:0.30,na:0.02,xl:2.0,xf:18.0},80,88,82),
+ pcv({n:"Futtererbsen",       g:"Eiweiß",    kultur:"erbse",  zukauf:true, preis:250, maxAnt:15, me:10.9,xp:21.0,lys:1.50,mc:0.52,thr:0.80,ca:0.10,vp:0.14,na:0.02,xl:1.3,xf:6.0},88,78,82),
+ pcv({n:"Ackerbohnen",        g:"Eiweiß",    kultur:"bohne",  zukauf:true, preis:250, maxAnt:12, me:10.5,xp:26.0,lys:1.65,mc:0.50,thr:0.90,ca:0.13,vp:0.15,na:0.02,xl:1.5,xf:8.0},85,76,79),
+ pcv({n:"Blaue Lupine",       g:"Eiweiß",    kultur:"lupine", zukauf:true, preis:280, maxAnt:8,  me:9.0, xp:31.0,lys:1.45,mc:0.60,thr:1.05,ca:0.25,vp:0.15,na:0.02,xl:5.5,xf:14.0},87,81,85),
+ pcv({n:"Maiskleber 60 %",    g:"Eiweiß",    kultur:null, zukauf:true, preis:700, maxAnt:8,  me:15.0,xp:60.0,lys:1.00,mc:2.80,thr:2.00,ca:0.05,vp:0.15,na:0.02,xl:4.0,xf:1.5},85,92,89),
+ pcv({n:"Kartoffeleiweiß",    g:"Eiweiß",    kultur:null, zukauf:true, preis:1300,maxAnt:5,  me:14.0,xp:78.0,lys:5.60,mc:2.90,thr:4.20,ca:0.15,vp:0.10,na:0.02,xl:2.0,xf:0.5},90,90,89),
+ pcv({n:"Pflanzenöl",         g:"Fett",      kultur:null, zukauf:true, preis:1100,maxAnt:6,  me:36.5,xp:0,lys:0,mc:0,thr:0,ca:0,vp:0,na:0,xl:99.0,xf:0},100,100,100),
+ pcv({n:"Futterkalk",         g:"Mineral",   kultur:null, zukauf:true, preis:50,  maxAnt:3,  me:0,xp:0,lys:0,mc:0,thr:0,ca:38.0,vp:0,na:0,xl:0,xf:0},100,100,100),
+ pcv({n:"Monocalciumphosphat",g:"Mineral",   kultur:null, zukauf:true, preis:900, maxAnt:3,  me:0,xp:0,lys:0,mc:0,thr:0,ca:16.0,vp:20.5,na:0,xl:0,xf:0},100,100,100),
+ pcv({n:"Viehsalz",           g:"Mineral",   kultur:null, zukauf:true, preis:120, maxAnt:0.6,minAnt:0.10, me:0,xp:0,lys:0,mc:0,thr:0,ca:0,vp:0,na:39.0,xl:0,xf:0},100,100,100),
+ pcv({n:"Mineralfutter Pute", g:"Mineral",   kultur:null, zukauf:true, preis:1500,maxAnt:1.0,minAnt:1.0,  me:0,xp:0,lys:0,mc:0,thr:0,ca:12.0,vp:2.0,na:3.0,xl:0,xf:0},100,100,100),
+ pcv({n:"DL-Methionin",       g:"Aminosäure",kultur:null, zukauf:true, preis:3200,maxAnt:0.6, me:0,xp:58.0,lys:0,mc:99.0,thr:0,ca:0,vp:0,na:0,xl:0,xf:0},100,100,100),
+ pcv({n:"L-Lysin HCl",        g:"Aminosäure",kultur:null, zukauf:true, preis:1800,maxAnt:0.8, me:0,xp:95.0,lys:78.0,mc:0,thr:0,ca:0,vp:0,na:0,xl:0,xf:0},100,100,100),
+ pcv({n:"L-Threonin",         g:"Aminosäure",kultur:null, zukauf:true, preis:2500,maxAnt:0.5, me:0,xp:73.0,lys:0,mc:0,thr:98.0,ca:0,vp:0,na:0,xl:0,xf:0},100,100,100)
+];
+
+/* Bedarfsnormen: [min,max] je Nährstoff */
+function mkNorm(me,xp,lys,mc,thr,plys,pmc,pthr,ca,vp,xf){
+  return {me:[me,me+0.4], xp:[xp,null], lys:[lys,null], mc:[mc,null], thr:[thr,null],
+          plys:[plys,null], pmc:[pmc,null], pthr:[pthr,null],
+          ca:[ca,ca+0.30], vp:[vp,vp+0.16], na:[0.14,0.25], xl:[null,null], xf:[null,xf]};
+}
+const GRUPPEN_START = {
+  haehne:{ name:"Mastputen Hähne (bis 21./22. Woche)", futterKg:[1.6,4.0,7.5,15.0,14.5,20.0], phasen:[
+    {name:"P1",zeit:"1.–3. Wo", w:mkNorm(11.7,27.0,1.75,1.10,1.15,1.58,0.97,1.00,1.40,0.78,4.0)},
+    {name:"P2",zeit:"4.–6. Wo", w:mkNorm(12.0,25.0,1.55,1.00,1.02,1.40,0.88,0.89,1.30,0.70,4.5)},
+    {name:"P3",zeit:"7.–9. Wo", w:mkNorm(12.4,22.5,1.35,0.90,0.90,1.22,0.79,0.78,1.15,0.62,5.0)},
+    {name:"P4",zeit:"10.–13. Wo",w:mkNorm(12.8,20.0,1.15,0.78,0.78,1.04,0.69,0.68,1.00,0.54,5.5)},
+    {name:"P5",zeit:"14.–16. Wo",w:mkNorm(13.0,18.0,1.00,0.70,0.68,0.90,0.62,0.59,0.92,0.46,6.0)},
+    {name:"P6",zeit:"ab 17. Wo", w:mkNorm(13.2,16.0,0.85,0.62,0.60,0.77,0.55,0.52,0.85,0.40,6.0)}
+  ]},
+  hennen:{ name:"Mastputen Hennen (bis 16. Woche)", futterKg:[1.5,3.5,6.0,9.5,6.5], phasen:[
+    {name:"H1",zeit:"1.–3. Wo", w:mkNorm(11.7,27.0,1.75,1.10,1.15,1.58,0.97,1.00,1.40,0.78,4.0)},
+    {name:"H2",zeit:"4.–6. Wo", w:mkNorm(12.0,24.5,1.50,0.98,1.00,1.35,0.86,0.87,1.28,0.68,4.5)},
+    {name:"H3",zeit:"7.–9. Wo", w:mkNorm(12.4,21.5,1.28,0.86,0.86,1.16,0.76,0.75,1.12,0.60,5.0)},
+    {name:"H4",zeit:"10.–13. Wo",w:mkNorm(12.8,19.0,1.08,0.74,0.74,0.98,0.65,0.64,0.98,0.52,5.5)},
+    {name:"H5",zeit:"ab 14. Wo", w:mkNorm(13.0,17.0,0.92,0.66,0.64,0.83,0.58,0.56,0.90,0.44,6.0)}
+  ]},
+  aufzucht:{ name:"Putenaufzucht", futterKg:[2.0,7.0,14.0], phasen:[
+    {name:"A1",zeit:"1.–4. Wo", w:mkNorm(11.6,26.0,1.65,1.05,1.08,1.49,0.93,0.94,1.35,0.75,4.5)},
+    {name:"A2",zeit:"5.–10. Wo",w:mkNorm(11.8,21.0,1.25,0.82,0.84,1.13,0.72,0.73,1.10,0.58,5.5)},
+    {name:"A3",zeit:"ab 11. Wo",w:mkNorm(11.5,16.5,0.85,0.60,0.60,0.77,0.53,0.52,1.00,0.42,7.0)}
+  ]}
+};
+
+const KULTUREN_START = [
+ {key:"roggen",name:"Winterroggen", ertrag:6.5,kostenHa:700,verkaufspreis:165,minAnt:0,maxAnt:33,gruppe:"Halmfrucht",vorrat:0},
+ {key:"triti", name:"Triticale",    ertrag:5.5,kostenHa:680,verkaufspreis:175,minAnt:0,maxAnt:25,gruppe:"Halmfrucht",vorrat:0},
+ {key:"weizen",name:"Winterweizen", ertrag:6.0,kostenHa:800,verkaufspreis:195,minAnt:0,maxAnt:25,gruppe:"Halmfrucht",vorrat:0},
+ {key:"gerste",name:"Wintergerste", ertrag:5.5,kostenHa:720,verkaufspreis:175,minAnt:0,maxAnt:20,gruppe:"Halmfrucht",vorrat:0},
+ {key:"mais",  name:"Körnermais",   ertrag:7.5,kostenHa:900,verkaufspreis:200,minAnt:0,maxAnt:25,gruppe:"Blattfrucht",vorrat:0},
+ {key:"erbse", name:"Futtererbsen", ertrag:3.0,kostenHa:550,verkaufspreis:250,minAnt:0,maxAnt:15,gruppe:"Leguminose",vorrat:0},
+ {key:"lupine",name:"Blaue Lupine", ertrag:2.5,kostenHa:550,verkaufspreis:280,minAnt:0,maxAnt:15,gruppe:"Leguminose",vorrat:0},
+ {key:"bohne", name:"Ackerbohnen",  ertrag:3.2,kostenHa:600,verkaufspreis:250,minAnt:0,maxAnt:12,gruppe:"Leguminose",vorrat:0},
+ {key:"sonne", name:"Sonnenblume",  ertrag:2.5,kostenHa:600,verkaufspreis:400,minAnt:0,maxAnt:12,gruppe:"Blattfrucht",vorrat:0}
+];
+const GRUPPENGRENZEN_START = [
+ {name:"Halmfrucht", max:70, min:0},
+ {name:"Blattfrucht",max:40, min:0},
+ {name:"Leguminose", max:25, min:0}
+];
+
+/* ==========================================================
+   3  Zustand
+   ========================================================== */
+let S;
+function initZustand(){
+  S = {
+    futter: JSON.parse(JSON.stringify(FUTTER_START)),
+    gruppen: JSON.parse(JSON.stringify(GRUPPEN_START)),
+    kulturen: JSON.parse(JSON.stringify(KULTUREN_START)),
+    kgrenzen: JSON.parse(JSON.stringify(GRUPPENGRENZEN_START)),
+    gruppeAktiv:"haehne", phaseAktiv:0,
+    durchgaenge:3, tiere:10000, verluste:3, reserve:5,
+    modus:"flaeche", flaeche:600,
+    anteile:[], fix:[], minA:[], maxA:[],
+    dualKomp:null, dualNaehr:null, plan:null
+  };
+  S.anteile = S.futter.map(()=>0);
+  S.fix     = S.futter.map(()=>false);
+  S.minA    = S.futter.map(f=> f.minAnt!==undefined ? f.minAnt : 0);
+  S.maxA    = S.futter.map(f=> f.maxAnt!==undefined ? f.maxAnt : 100);
+}
+initZustand();
+
+const z2  = (v,d)=> (v===null||v===undefined||isNaN(v)) ? "–" : v.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const nz  = v => { const x=parseFloat(String(v).replace(",",".")); return isNaN(x)?0:x; };
+const nzN = v => { const s=String(v).trim(); if(s==="") return null; const x=parseFloat(s.replace(",",".")); return isNaN(x)?null:x; };
+const aktGruppe = ()=> S.gruppen[S.gruppeAktiv];
+const aktPhase  = ()=> aktGruppe().phasen[S.phaseAktiv];
+
+function phasenMengen(){
+  const g = aktGruppe();
+  const tiere = S.tiere*S.durchgaenge*(1-S.verluste/200);   // halbe Verluste als Mittel über die Mast
+  const f = 1 + S.reserve/100;
+  return g.phasen.map((p,i)=> tiere*(g.futterKg[i]||0)/1000*f );
+}
+function gehalte(){
+  const g={};
+  NAEHR_ALLE.forEach(n=>{
+    let s=0; S.futter.forEach((f,i)=> s += (S.anteile[i]/100)*(f[n.k]||0));
+    g[n.k]=s;
+  });
+  return g;
+}
+const summeAnteile = ()=> S.anteile.reduce((a,b)=>a+b,0);
+const kostenT = ()=> S.futter.reduce((s,f,i)=> s + S.anteile[i]/100*f.preis, 0);
+
+/* ==========================================================
+   4  Optimierung einer einzelnen Phase
+   ========================================================== */
+function optimierePhase(){
+  const p=aktPhase(), n=S.futter.length, nh=NAEHR();
+  const c=S.futter.map(f=>f.preis);
+  const A=[],rel=[],b=[],meta=[];
+  const zeile=()=>new Array(n).fill(0);
+  A.push(new Array(n).fill(1)); rel.push("="); b.push(100); meta.push({typ:"summe"});
+  nh.forEach(x=>{
+    const gr=p.w[x.k]; if(!gr) return;
+    if(gr[0]!==null&&gr[0]!==undefined){ A.push(S.futter.map(f=>f[x.k]||0)); rel.push(">="); b.push(gr[0]*100); meta.push({typ:"naehr",n:x.k,g:"min"}); }
+    if(gr[1]!==null&&gr[1]!==undefined){ A.push(S.futter.map(f=>f[x.k]||0)); rel.push("<="); b.push(gr[1]*100); meta.push({typ:"naehr",n:x.k,g:"max"}); }
+  });
+  for(let i=0;i<n;i++){
+    if(S.fix[i]){ const z=zeile(); z[i]=1; A.push(z); rel.push("="); b.push(S.anteile[i]); meta.push({typ:"fix",i}); continue; }
+    if(S.minA[i]>0){ const z=zeile(); z[i]=1; A.push(z); rel.push(">="); b.push(S.minA[i]); meta.push({typ:"kmin",i}); }
+    if(S.maxA[i]<100){ const z=zeile(); z[i]=1; A.push(z); rel.push("<="); b.push(S.maxA[i]); meta.push({typ:"kmax",i}); }
+  }
+  const r=simplex(c,A,rel,b);
+  const box=document.getElementById("optHinweis");
+  if(!r.ok){
+    box.className="hinweis zeig schlecht";
+    box.textContent = r.grund==="unloesbar"
+      ? "Diese Phase ist mit den freigegebenen Futtermitteln nicht zu erreichen. Meist liegt es am Höchstanteil beim Eiweißfutter, an fehlendem Öl für die Energie oder an einem Fix-Anteil, der die Rechnung blockiert."
+      : "Die Rechnung ist nicht durchgelaufen. Prüfe die Grenzen auf Widersprüche, etwa Min größer als Max.";
+    S.dualKomp=null; S.dualNaehr=null;
+    return;
+  }
+  S.anteile = r.x.map(v=> Math.abs(v)<1e-7?0:Math.round(v*1000)/1000);
+  S.dualKomp={}; S.dualNaehr={};
+  meta.forEach((m,i)=>{
+    if(m.typ==="kmax" && Math.abs(r.y[i])>1e-6) S.dualKomp[m.i]=r.y[i]/100;      // €/t je %-Punkt
+    if(m.typ==="naehr" && Math.abs(r.y[i])>1e-6){
+      const def=NAEHR_ALLE.find(x=>x.k===m.n);
+      S.dualNaehr[m.n]=r.y[i]*def.schritt;                                        // €/t je Schritt
+    }
+  });
+  box.className="hinweis zeig gut";
+  box.textContent="Kostenoptimale Mischung für "+p.name+": "+z2(kostenT(),2)+" €/t. Alle Vorgaben eingehalten.";
+  zeichneRation();
+}
+
+/* ==========================================================
+   5  Gesamtplan: Flächen, Fruchtfolge und Rationen
+   ========================================================== */
+function planeJahr(){
+  const F=S.futter, G=aktGruppe(), P=G.phasen, K=S.kulturen, nh=NAEHR();
+  const nF=F.length, nP=P.length, nK=K.length;
+  const mengen0 = phasenMengen();
+  const flaechenModus = S.modus==="flaeche";
+  const idxF=(i,p)=> i*nP+p;
+  const offH=nF*nP, offV=offH+(flaechenModus?nK:0);
+  const zIdx=[]; F.forEach((f,i)=>{ if(f.zukauf) zIdx.push(i); });
+  const offZ=offV+nK, nVar=offZ+zIdx.length;
+  const zPos={}; zIdx.forEach((i,k)=> zPos[i]=offZ+k);
+  const zeile=()=>new Array(nVar).fill(0);
+
+  const c=new Array(nVar).fill(0);
+  F.forEach((f,i)=>{ if(!f.kultur) for(let p=0;p<nP;p++) c[idxF(i,p)]=f.preis; });
+  if(flaechenModus) K.forEach((k,ci)=> c[offH+ci]=k.kostenHa);
+  K.forEach((k,ci)=> c[offV+ci]=-k.verkaufspreis);
+  zIdx.forEach(i=> c[zPos[i]]=F[i].preis);
+
+  const A=[],rel=[],b=[],meta=[];
+  const add=(r,rr,rhs,m)=>{A.push(r);rel.push(rr);b.push(rhs);meta.push(m);};
+
+  for(let p=0;p<nP;p++){
+    const r=zeile(); for(let i=0;i<nF;i++) r[idxF(i,p)]=1;
+    add(r,"=",mengen0[p],{typ:"menge",phase:p});
+  }
+  for(let p=0;p<nP;p++){
+    nh.forEach(x=>{
+      const gr=P[p].w[x.k]; if(!gr) return;
+      if(gr[0]!==null&&gr[0]!==undefined){
+        const r=zeile(); for(let i=0;i<nF;i++) r[idxF(i,p)]=F[i][x.k]||0;
+        add(r,">=",gr[0]*mengen0[p],{typ:"naehr",phase:p,n:x.k,g:"min"});
+      }
+      if(gr[1]!==null&&gr[1]!==undefined){
+        const r=zeile(); for(let i=0;i<nF;i++) r[idxF(i,p)]=F[i][x.k]||0;
+        add(r,"<=",gr[1]*mengen0[p],{typ:"naehr",phase:p,n:x.k,g:"max"});
+      }
+    });
+  }
+  for(let i=0;i<nF;i++){
+    const mx=S.maxA[i], mn=S.minA[i];
+    for(let p=0;p<nP;p++){
+      if(mx<100){ const r=zeile(); r[idxF(i,p)]=1; add(r,"<=",mx/100*mengen0[p],{typ:"kmax",komp:i,phase:p}); }
+      if(mn>0){   const r=zeile(); r[idxF(i,p)]=1; add(r,">=",mn/100*mengen0[p],{typ:"kmin",komp:i,phase:p}); }
+    }
+  }
+  K.forEach((k,ci)=>{
+    const i=F.findIndex(f=>f.kultur===k.key);
+    const r=zeile();
+    if(i>=0){ for(let p=0;p<nP;p++) r[idxF(i,p)]=1; if(F[i].zukauf) r[zPos[i]]=-1; }
+    r[offV+ci]=1;
+    let rhs=0;
+    if(flaechenModus) r[offH+ci]=-k.ertrag; else rhs=k.vorrat||0;
+    add(r,"=",rhs,{typ:"bilanz",kultur:ci});
+    // Verkauft wird nur eigene Ernte. Ohne diese Schranke wuerde die Rechnung
+    // zukaufen und weiterverkaufen, sobald der Zukauf unter dem Verkaufspreis liegt.
+    const rv=zeile(); rv[offV+ci]=1;
+    if(flaechenModus){ rv[offH+ci]=-k.ertrag; add(rv,"<=",0,{typ:"verkaufGrenze",kultur:ci}); }
+    else add(rv,"<=",k.vorrat||0,{typ:"verkaufGrenze",kultur:ci});
+  });
+  if(flaechenModus){
+    const r=zeile(); K.forEach((k,ci)=> r[offH+ci]=1);
+    add(r,"<=",S.flaeche,{typ:"flaeche"});
+    K.forEach((k,ci)=>{
+      if(k.maxAnt<100){ const z=zeile(); z[offH+ci]=1; add(z,"<=",k.maxAnt/100*S.flaeche,{typ:"kulturMax",kultur:ci}); }
+      if(k.minAnt>0){   const z=zeile(); z[offH+ci]=1; add(z,">=",k.minAnt/100*S.flaeche,{typ:"kulturMin",kultur:ci}); }
+    });
+    S.kgrenzen.forEach((g,gi)=>{
+      const hat = K.some(k=>k.gruppe===g.name);
+      if(!hat) return;
+      if(g.max!==null&&g.max<100){ const z=zeile(); K.forEach((k,ci)=>{ if(k.gruppe===g.name) z[offH+ci]=1; }); add(z,"<=",g.max/100*S.flaeche,{typ:"gruppeMax",gruppe:gi}); }
+      if(g.min>0){ const z=zeile(); K.forEach((k,ci)=>{ if(k.gruppe===g.name) z[offH+ci]=1; }); add(z,">=",g.min/100*S.flaeche,{typ:"gruppeMin",gruppe:gi}); }
+    });
+  }
+
+  const erg=simplex(c,A,rel,b);
+  if(!erg.ok) return {ok:false,grund:erg.grund};
+
+  const mengen=[], rezept=[];
+  for(let p=0;p<nP;p++){
+    const t=F.map((f,i)=>erg.x[idxF(i,p)]);
+    const s=t.reduce((a,x)=>a+x,0)||1;
+    mengen.push(t); rezept.push(t.map(x=>x/s*100));
+  }
+  const wert={};
+  meta.forEach((m,r)=>{ if(m.typ==="bilanz") wert[K[m.kultur].key]=-erg.y[r]; });
+  const effPreis=F.map(f=> !f.kultur ? f.preis : (wert[f.kultur]!==undefined?wert[f.kultur]:f.preis));
+  const kostenJePhase=mengen.map((t,p)=>{
+    let s=0; for(let i=0;i<nF;i++) s+=t[i]*effPreis[i];
+    return mengen0[p]>0 ? s/mengen0[p] : 0;
+  });
+  const verfuettert = K.map(k=>{
+    const i=F.findIndex(f=>f.kultur===k.key);
+    if(i<0) return 0;
+    return mengen.reduce((a,t)=>a+t[i],0);
+  });
+  const zukauf={}; zIdx.forEach(i=>{ if(erg.x[zPos[i]]>1e-6) zukauf[i]=erg.x[zPos[i]]; });
+  F.forEach((f,i)=>{ if(!f.kultur){ const v=mengen.reduce((a,t)=>a+t[i],0); if(v>1e-6) zukauf[i]=v; } });
+
+  return {ok:true, ziel:erg.ziel, mengen0, mengen, rezept, wert, kostenJePhase, verfuettert,
+          verkauf:K.map((k,ci)=>erg.x[offV+ci]),
+          ha: flaechenModus ? K.map((k,ci)=>erg.x[offH+ci]) : null,
+          zukauf, gruppeKey:S.gruppeAktiv};
+}
+
+/* ==========================================================
+   6  Oberfläche
+   ========================================================== */
+function zeichneKopf(){
+  const sel=document.getElementById("selGruppe");
+  if(!sel.options.length){
+    Object.keys(S.gruppen).forEach(k=>{
+      const o=document.createElement("option"); o.value=k; o.textContent=S.gruppen[k].name; sel.appendChild(o);
+    });
+  }
+  sel.value=S.gruppeAktiv;
+  document.getElementById("selAS").value=asModus;
+  const l=document.getElementById("phasenLeiste"); l.innerHTML="";
+  aktGruppe().phasen.forEach((p,i)=>{
+    const b=document.createElement("button");
+    b.textContent=p.name+" · "+p.zeit;
+    b.setAttribute("aria-pressed", i===S.phaseAktiv?"true":"false");
+    b.addEventListener("click",()=>{ S.phaseAktiv=i; S.dualKomp=null; S.dualNaehr=null; zeichnen(); });
+    l.appendChild(b);
+  });
+}
+
+function zahlFeld(wert, schritt, cb, klasse){
+  const i=document.createElement("input");
+  i.type="number"; i.step=schritt; i.value = (wert===null||wert===undefined||wert==="") ? "" : wert;
+  if(klasse) i.className=klasse;
+  i.addEventListener("input",e=>cb(e.target.value));
+  return i;
+}
+
+function zeichneRation(){
+  const tb=document.querySelector("#tabMischung tbody"); tb.innerHTML="";
+  let gr="";
+  S.futter.forEach((f,i)=>{
+    if(f.g!==gr){ gr=f.g; const t=document.createElement("tr"); t.className="grp"; t.innerHTML='<td colspan="8">'+gr+'</td>'; tb.appendChild(t); }
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td"); c0.textContent=f.n; tr.appendChild(c0);
+
+    const c1=document.createElement("td");
+    c1.appendChild(zahlFeld(S.anteile[i]===0?"":S.anteile[i],"0.01",v=>{S.anteile[i]=nz(v); zeichnePanel(); zeichneKennzahlen(); zeichneSummen();}, S.fix[i]?"locked":""));
+    tr.appendChild(c1);
+
+    const c2=document.createElement("td");
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=S.fix[i]; cb.style.width="auto";
+    cb.addEventListener("change",e=>{S.fix[i]=e.target.checked; zeichneRation();});
+    c2.appendChild(cb); tr.appendChild(c2);
+
+    const c3=document.createElement("td");
+    c3.appendChild(zahlFeld(S.minA[i]===0?"":S.minA[i],"0.01",v=>S.minA[i]=nz(v))); tr.appendChild(c3);
+    const c4=document.createElement("td");
+    c4.appendChild(zahlFeld(S.maxA[i],"0.01",v=>S.maxA[i]=nz(v))); tr.appendChild(c4);
+    const c5=document.createElement("td");
+    c5.appendChild(zahlFeld(f.preis,"1",v=>{f.preis=nz(v); zeichneRation(); zeichneKennzahlen();})); tr.appendChild(c5);
+
+    const c6=document.createElement("td"); c6.className="num";
+    c6.textContent = S.anteile[i]>0 ? z2(S.anteile[i]/100*f.preis,2) : ""; tr.appendChild(c6);
+
+    const c7=document.createElement("td"); c7.className="num"; c7.style.color="var(--gold)";
+    if(S.dualKomp && S.dualKomp[i]!==undefined) c7.textContent=z2(Math.abs(S.dualKomp[i]),2);
+    tr.appendChild(c7);
+    tb.appendChild(tr);
+  });
+  zeichneSummen();
+}
+function zeichneSummen(){
+  const s=summeAnteile();
+  const el=document.getElementById("mSumme");
+  el.textContent=z2(s,2);
+  el.style.color = Math.abs(s-100)>0.05 ? "var(--low)" : "";
+  document.getElementById("mKosten").textContent = s>0 ? z2(kostenT(),2) : "";
+}
+
+function zeichnePanel(){
+  const p=aktPhase(), g=gehalte(), box=document.getElementById("naehrPanel");
+  box.innerHTML="";
+  NAEHR().forEach(x=>{
+    const gr=p.w[x.k]||[null,null], ist=g[x.k], mn=gr[0], mx=gr[1];
+    const z=document.createElement("div"); z.className="n-zeile";
+    const nm=document.createElement("div"); nm.className="n-name"; nm.textContent=x.name;
+    const iv=document.createElement("div"); iv.className="n-ist num"; iv.textContent=z2(ist,x.dez);
+    const sv=document.createElement("div"); sv.className="n-soll num";
+    sv.textContent = (mn===null&&mx===null) ? "frei"
+      : (mn!==null?z2(mn,x.dez):"") + (mx!==null?(mn!==null?"–":"max ")+z2(mx,x.dez):"");
+    const bar=document.createElement("div"); bar.className="bar";
+    const fu=document.createElement("i");
+    const ziel = mn!==null?mn:(mx!==null?mx:0);
+    fu.style.width = (ziel>0 ? Math.max(0,Math.min(ist/ziel,1.6))/1.6*100 : (ist>0?100:0))+"%";
+    if(mn!==null && ist<mn-1e-6){ bar.classList.add("u"); iv.style.color="var(--low)"; }
+    else if(mx!==null && ist>mx+1e-6){ bar.classList.add("o"); iv.style.color="var(--high)"; }
+    else iv.style.color="";
+    const mk=document.createElement("b"); mk.style.left = ziel>0 ? (100/1.6)+"%" : "100%";
+    bar.append(fu,mk);
+    const dv=document.createElement("div"); dv.className="n-dual num";
+    if(S.dualNaehr && S.dualNaehr[x.k]!==undefined) dv.textContent=z2(Math.abs(S.dualNaehr[x.k]),2);
+    z.append(nm,iv,sv,bar,dv); box.appendChild(z);
+  });
+}
+
+function zeichneKennzahlen(){
+  const s=summeAnteile(), k=kostenT();
+  document.getElementById("kzSumme").textContent=z2(s,1);
+  document.getElementById("kzSumme").style.color = Math.abs(s-100)>0.05 ? "#FFD9A8":"";
+  document.getElementById("kzKosten").textContent = s>0?z2(k,0):"–";
+  document.getElementById("preisT").textContent  = s>0?z2(k,2):"–";
+  document.getElementById("preisDt").textContent = s>0?z2(k/10,2):"–";
+  const p=aktPhase(), g=gehalte();
+  let gesamt=0, schlecht=0;
+  NAEHR().forEach(x=>{
+    const gr=p.w[x.k]; if(!gr) return;
+    if(gr[0]!==null&&gr[0]!==undefined){ gesamt++; if(g[x.k]<gr[0]-1e-6) schlecht++; }
+    if(gr[1]!==null&&gr[1]!==undefined){ gesamt++; if(g[x.k]>gr[1]+1e-6) schlecht++; }
+  });
+  const st=document.getElementById("kzStatus");
+  st.textContent = s<=0 ? "–" : (gesamt-schlecht)+"/"+gesamt;
+  st.style.color = (s>0&&schlecht>0) ? "#FFC9B8":"";
+}
+
+function zeichneJahr(){
+  document.getElementById("inDurchgaenge").value=S.durchgaenge;
+  document.getElementById("inTiere").value=S.tiere;
+  document.getElementById("inVerluste").value=S.verluste;
+  document.getElementById("inReserve").value=S.reserve;
+  document.getElementById("inFlaeche").value=S.flaeche;
+  document.getElementById("selModus").value=S.modus;
+  document.getElementById("modusText").textContent = S.modus==="flaeche"
+    ? "Die Rechnung verteilt die Fläche selbst auf die Kulturen und entscheidet dabei mit, was verfüttert und was verkauft wird. Die Fruchtfolgegrenzen im Reiter „Flächen“ halten das Ergebnis ackerbaulich im Rahmen."
+    : "Trag ein, was tatsächlich im Lager liegt. Die Rechnung nutzt es, soweit es fütterungstechnisch passt, und kauft den Rest zu. Was übrig bleibt, erscheint als Verkaufsmenge.";
+  document.getElementById("tabVorrat").hidden = S.modus!=="vorrat";
+
+  const g=aktGruppe(), m=phasenMengen(), summe=m.reduce((a,b)=>a+b,0);
+  const tb=document.querySelector("#tabJahr tbody"); tb.innerHTML="";
+  g.phasen.forEach((p,i)=>{
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td"); c0.textContent=p.name+" · "+p.zeit; tr.appendChild(c0);
+    const c1=document.createElement("td");
+    c1.appendChild(zahlFeld(g.futterKg[i],"0.1",v=>{g.futterKg[i]=nz(v); zeichneJahr();})); tr.appendChild(c1);
+    const c2=document.createElement("td"); c2.className="num"; c2.textContent=z2(m[i],1); tr.appendChild(c2);
+    const c3=document.createElement("td"); c3.className="num"; c3.textContent= summe>0?z2(m[i]/summe*100,1)+" %":"–"; tr.appendChild(c3);
+    tb.appendChild(tr);
+  });
+  document.getElementById("jahrSumme").textContent=z2(summe,1);
+
+  const tv=document.querySelector("#tabVorrat tbody"); tv.innerHTML="";
+  S.kulturen.forEach(k=>{
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td"); c0.textContent=k.name; tr.appendChild(c0);
+    const c1=document.createElement("td"); c1.appendChild(zahlFeld(k.vorrat,"10",v=>k.vorrat=nz(v))); tr.appendChild(c1);
+    const c2=document.createElement("td"); c2.appendChild(zahlFeld(k.verkaufspreis,"5",v=>k.verkaufspreis=nz(v))); tr.appendChild(c2);
+    tv.appendChild(tr);
+  });
+}
+
+function zeichneFlaechen(){
+  const tb=document.querySelector("#tabKulturen tbody"); tb.innerHTML="";
+  S.kulturen.forEach((k,ci)=>{
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td");
+    const inN=document.createElement("input"); inN.type="text"; inN.value=k.name;
+    inN.addEventListener("input",e=>{k.name=e.target.value;});
+    c0.appendChild(inN); tr.appendChild(c0);
+
+    const c1=document.createElement("td");
+    const se=document.createElement("select"); se.className="zelle";
+    S.kgrenzen.forEach(g=>{ const o=document.createElement("option"); o.value=g.name; o.textContent=g.name; se.appendChild(o); });
+    se.value=k.gruppe; se.addEventListener("change",e=>k.gruppe=e.target.value);
+    c1.appendChild(se); tr.appendChild(c1);
+
+    [["ertrag","0.1"],["kostenHa","10"],["verkaufspreis","5"],["minAnt","1"],["maxAnt","1"]].forEach(([feld,sch])=>{
+      const td=document.createElement("td");
+      td.appendChild(zahlFeld(k[feld],sch,v=>{k[feld]=nz(v); zeichneFlaechen();}));
+      tr.appendChild(td);
+    });
+    const cd=document.createElement("td"); cd.className="num";
+    const db=k.ertrag*k.verkaufspreis-k.kostenHa;
+    cd.textContent=z2(db,0); cd.style.color = db<0?"var(--low)":"";
+    tr.appendChild(cd);
+
+    const cx=document.createElement("td");
+    const rm=document.createElement("button"); rm.className="rm"; rm.textContent="×";
+    rm.addEventListener("click",()=>{ S.kulturen.splice(ci,1); zeichnen(); });
+    cx.appendChild(rm); tr.appendChild(cx);
+    tb.appendChild(tr);
+  });
+
+  const tg=document.querySelector("#tabGruppen tbody"); tg.innerHTML="";
+  S.kgrenzen.forEach(g=>{
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td"); c0.textContent=g.name; tr.appendChild(c0);
+    const c1=document.createElement("td"); c1.appendChild(zahlFeld(g.max,"1",v=>g.max=nz(v))); tr.appendChild(c1);
+    const c2=document.createElement("td"); c2.appendChild(zahlFeld(g.min,"1",v=>g.min=nz(v))); tr.appendChild(c2);
+    tg.appendChild(tr);
+  });
+}
+
+function zeichneFutter(){
+  const tb=document.querySelector("#tabFutter tbody"); tb.innerHTML="";
+  S.futter.forEach((f,i)=>{
+    const tr=document.createElement("tr");
+    const c0=document.createElement("td");
+    const inN=document.createElement("input"); inN.type="text"; inN.value=f.n;
+    inN.addEventListener("input",e=>{f.n=e.target.value;});
+    c0.appendChild(inN); tr.appendChild(c0);
+
+    const c1=document.createElement("td");
+    const se=document.createElement("select"); se.className="zelle";
+    const o0=document.createElement("option"); o0.value=""; o0.textContent="nur Zukauf"; se.appendChild(o0);
+    S.kulturen.forEach(k=>{ const o=document.createElement("option"); o.value=k.key; o.textContent=k.name; se.appendChild(o); });
+    se.value=f.kultur||"";
+    se.addEventListener("change",e=>{ f.kultur=e.target.value||null; });
+    c1.appendChild(se); tr.appendChild(c1);
+
+    ["me","xp","lys","mc","thr","plys","pmc","pthr","ca","vp","na","xl","xf"].forEach(k=>{
+      const td=document.createElement("td");
+      td.appendChild(zahlFeld(f[k],"0.01",v=>{f[k]=nz(v); zeichnePanel(); zeichneKennzahlen();}));
+      tr.appendChild(td);
+    });
+    const cp=document.createElement("td");
+    cp.appendChild(zahlFeld(f.preis,"5",v=>{f.preis=nz(v); zeichneRation(); zeichneKennzahlen();})); tr.appendChild(cp);
+    const cm=document.createElement("td");
+    cm.appendChild(zahlFeld(S.maxA[i],"1",v=>{S.maxA[i]=nz(v); zeichneRation();})); tr.appendChild(cm);
+    const cz=document.createElement("td");
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!f.zukauf; cb.style.width="auto";
+    cb.addEventListener("change",e=>f.zukauf=e.target.checked);
+    cz.appendChild(cb); tr.appendChild(cz);
+    const cx=document.createElement("td");
+    const rm=document.createElement("button"); rm.className="rm"; rm.textContent="×";
+    rm.addEventListener("click",()=>{
+      S.futter.splice(i,1); S.anteile.splice(i,1); S.fix.splice(i,1); S.minA.splice(i,1); S.maxA.splice(i,1);
+      zeichnen();
+    });
+    cx.appendChild(rm); tr.appendChild(cx);
+    tb.appendChild(tr);
+  });
+}
+
+function zeichneNormen(){
+  document.getElementById("normenGruppe").textContent =
+    aktGruppe().name + " — Werte je kg Alleinfutter. Leeres Feld heißt: keine Grenze. Es werden die Zeilen der gewählten Aminosäurebasis für die Rechnung verwendet.";
+  const kopf=document.getElementById("normKopf");
+  kopf.innerHTML="<th style='min-width:150px'>Nährstoff</th>";
+  aktGruppe().phasen.forEach(p=>{
+    const th=document.createElement("th"); th.colSpan=2;
+    th.innerHTML=p.name+"<br><span style='font-weight:400'>"+p.zeit+"</span><br>min / max";
+    kopf.appendChild(th);
+  });
+  const tb=document.querySelector("#tabNormen tbody"); tb.innerHTML="";
+  NAEHR().forEach(x=>{
+    const tr=document.createElement("tr");
+    const t0=document.createElement("td"); t0.textContent=x.name+" ("+x.einheit+")"; tr.appendChild(t0);
+    aktGruppe().phasen.forEach(p=>{
+      [0,1].forEach(idx=>{
+        const td=document.createElement("td");
+        const inp=zahlFeld(p.w[x.k]?p.w[x.k][idx]:null,"0.01",v=>{
+          if(!p.w[x.k]) p.w[x.k]=[null,null];
+          p.w[x.k][idx]=nzN(v); zeichnePanel(); zeichneKennzahlen();
+        });
+        inp.style.maxWidth="60px";
+        td.appendChild(inp); tr.appendChild(td);
+      });
+    });
+    tb.appendChild(tr);
+  });
+}
+
+/* ---------- Ergebnisdarstellung ---------- */
+function zeichneErgebnis(){
+  const raum=document.getElementById("ergebnisRaum");
+  raum.innerHTML="";
+  const r=S.plan;
+  if(!r){ raum.innerHTML='<p class="mini">Noch nichts gerechnet. Prüfe Jahresplan und Flächen und starte den Gesamtplan.</p>'; return; }
+  const G=S.gruppen[r.gruppeKey], K=S.kulturen, F=S.futter;
+
+  /* Anbauplan */
+  const k1=document.createElement("div"); k1.className="card";
+  k1.innerHTML='<h2>'+(r.ha?"Anbauplan":"Verwertung der Vorräte")+'</h2>';
+  const b1=document.createElement("div"); b1.className="card-body";
+  let h='<table><thead><tr><th>Kultur</th>'+(r.ha?'<th>ha</th>':'')+
+        '<th>Menge t</th><th>verfüttert t</th><th>verkauft t</th><th>Wert im Trog €/t</th><th>Markt €/t</th><th>Verwertung</th></tr></thead><tbody>';
+  K.forEach((k,ci)=>{
+    const menge = r.ha ? r.ha[ci]*k.ertrag : (k.vorrat||0);
+    if(menge<0.05 && r.verfuettert[ci]<0.05) return;
+    const wert=r.wert[k.key];
+    const besser = wert!==undefined && wert > k.verkaufspreis+0.5;
+    h+='<tr><td>'+k.name+'</td>'+
+       (r.ha?'<td class="num">'+z2(r.ha[ci],1)+'</td>':'')+
+       '<td class="num">'+z2(menge,0)+'</td>'+
+       '<td class="num">'+z2(r.verfuettert[ci],0)+'</td>'+
+       '<td class="num">'+z2(r.verkauf[ci],0)+'</td>'+
+       '<td class="num">'+(wert!==undefined?z2(wert,2):"–")+'</td>'+
+       '<td class="num">'+z2(k.verkaufspreis,0)+'</td>'+
+       '<td><span class="marke '+(besser?"fuettern":"verkaufen")+'">'+
+         (besser?"im Trog mehr wert":"Marktpreis")+'</span></td></tr>';
+  });
+  if(r.ha) h+='<tr class="grp"><td>Summe</td><td class="num">'+z2(r.ha.reduce((a,b)=>a+b,0),1)+
+              '</td><td colspan="6"></td></tr>';
+  h+='</tbody></table>';
+  h+='<p class="mini" style="margin-top:10px">„Wert im Trog“ ist der Preis, zu dem sich die Tonne aus eigener Ernte in der Ration gerade noch rechnet. '+
+     'Liegt er über dem Marktpreis, verdient die Ware im Stall mehr als am Kipper. Liegt er genau auf dem Marktpreis, ist die Kultur austauschbar — dann entscheiden Lagerkosten, Liquidität und Preisrisiko.</p>';
+  b1.innerHTML=h; k1.appendChild(b1); raum.appendChild(k1);
+
+  /* Rezepturen */
+  const k2=document.createElement("div"); k2.className="card";
+  k2.innerHTML='<h2>Rezepturen je Phase in Prozent</h2>';
+  const b2=document.createElement("div"); b2.className="card-body";
+  let h2='<div style="overflow-x:auto"><table><thead><tr><th>Komponente</th>';
+  G.phasen.forEach(p=> h2+='<th>'+p.name+'</th>');
+  h2+='</tr></thead><tbody>';
+  F.forEach((f,i)=>{
+    const zeile=G.phasen.map((p,pi)=> r.rezept[pi][i]);
+    if(!zeile.some(v=>v>0.005)) return;
+    h2+='<tr><td>'+f.n+'</td>'+zeile.map(v=>'<td class="num">'+(v>0.005?z2(v,2):"")+'</td>').join("")+'</tr>';
+  });
+  h2+='</tbody><tfoot><tr><td>Bedarf t</td>'+r.mengen0.map(m=>'<td class="num">'+z2(m,0)+'</td>').join("")+'</tr>'+
+      '<tr><td>Futterkosten €/t</td>'+r.kostenJePhase.map(v=>'<td class="num">'+z2(v,2)+'</td>').join("")+'</tr></tfoot></table></div>';
+  const gesamtFutter=r.mengen0.reduce((a,b)=>a+b,0);
+  const gesamtKosten=r.kostenJePhase.reduce((s,v,i)=>s+v*r.mengen0[i],0);
+  h2+='<p class="mini" style="margin-top:10px">Gesamter Futterbedarf '+z2(gesamtFutter,0)+' t, bewertet mit '+
+      z2(gesamtKosten,0)+' € — im Mittel '+z2(gesamtKosten/(gesamtFutter||1),2)+' € je Tonne. '+
+      'Eigene Ware ist dabei mit ihrem Wert im Trog angesetzt, nicht mit den Erzeugungskosten: so siehst du, was das Futter dich wirklich kostet, wenn du das Verkaufen mit einrechnest.</p>';
+  b2.innerHTML=h2; k2.appendChild(b2); raum.appendChild(k2);
+
+  /* Zukauf */
+  const k3=document.createElement("div"); k3.className="card";
+  k3.innerHTML='<h2>Zukauf für das Jahr</h2>';
+  const b3=document.createElement("div"); b3.className="card-body";
+  let h3='<table><thead><tr><th>Komponente</th><th>Menge t</th><th>€/t</th><th>Kosten €</th></tr></thead><tbody>';
+  let sz=0;
+  Object.keys(r.zukauf).forEach(i=>{
+    const f=F[i], m=r.zukauf[i]; sz+=m*f.preis;
+    h3+='<tr><td>'+f.n+'</td><td class="num">'+z2(m,1)+'</td><td class="num">'+z2(f.preis,0)+
+        '</td><td class="num">'+z2(m*f.preis,0)+'</td></tr>';
+  });
+  h3+='</tbody><tfoot><tr><td>Summe</td><td colspan="2"></td><td class="num">'+z2(sz,0)+'</td></tr></tfoot></table>';
+  b3.innerHTML=h3; k3.appendChild(b3); raum.appendChild(k3);
+}
+
+function zeichnen(){
+  zeichneKopf(); zeichneRation(); zeichnePanel(); zeichneKennzahlen();
+  zeichneJahr(); zeichneFlaechen(); zeichneFutter(); zeichneNormen(); zeichneErgebnis();
+}
+
+/* ==========================================================
+   7  Bedienung
+   ========================================================== */
+document.querySelectorAll(".tabs button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+    ["ration","jahr","flaechen","ergebnis","futter","normen"].forEach(t=>{
+      document.getElementById("tab-"+t).hidden = (t!==b.dataset.tab);
+    });
+  });
+});
+document.getElementById("selGruppe").addEventListener("change",e=>{ S.gruppeAktiv=e.target.value; S.phaseAktiv=0; S.dualKomp=null; S.dualNaehr=null; zeichnen(); });
+document.getElementById("selAS").addEventListener("change",e=>{ asModus=e.target.value; S.dualKomp=null; S.dualNaehr=null; zeichnen(); });
+document.getElementById("selModus").addEventListener("change",e=>{ S.modus=e.target.value; zeichneJahr(); });
+[["inDurchgaenge","durchgaenge"],["inTiere","tiere"],["inVerluste","verluste"],["inReserve","reserve"],["inFlaeche","flaeche"]]
+ .forEach(([id,feld])=> document.getElementById(id).addEventListener("input",e=>{ S[feld]=nz(e.target.value); zeichneJahr(); }));
+
+document.getElementById("btnOpt").addEventListener("click",optimierePhase);
+document.getElementById("btnAuf100").addEventListener("click",()=>{
+  const s=summeAnteile(); if(s<=0) return;
+  S.anteile=S.anteile.map(a=>Math.round(a/s*100*1000)/1000); zeichnen();
+});
+document.getElementById("btnLeeren").addEventListener("click",()=>{
+  S.anteile=S.anteile.map(()=>0); S.fix=S.fix.map(()=>false);
+  S.dualKomp=null; S.dualNaehr=null;
+  document.getElementById("optHinweis").className="hinweis"; zeichnen();
+});
+document.getElementById("btnNeuesFutter").addEventListener("click",()=>{
+  S.futter.push({n:"Neues Futtermittel",g:"Eigene",kultur:null,zukauf:true,preis:0,
+    me:0,xp:0,lys:0,mc:0,thr:0,plys:0,pmc:0,pthr:0,ca:0,vp:0,na:0,xl:0,xf:0});
+  S.anteile.push(0); S.fix.push(false); S.minA.push(0); S.maxA.push(100); zeichnen();
+});
+document.getElementById("btnNeueKultur").addEventListener("click",()=>{
+  S.kulturen.push({key:"k"+Date.now(),name:"Neue Kultur",ertrag:5,kostenHa:700,verkaufspreis:180,
+    minAnt:0,maxAnt:20,gruppe:S.kgrenzen[0].name,vorrat:0});
+  zeichnen();
+});
+
+document.getElementById("btnGesamt").addEventListener("click",()=>{
+  const box=document.getElementById("gesamtHinweis");
+  const t0=performance.now();
+  const r=planeJahr();
+  if(!r.ok){
+    S.plan=null; zeichneErgebnis();
+    box.className="hinweis zeig schlecht";
+    box.textContent = r.grund==="unloesbar"
+      ? "So geht die Rechnung nicht auf. Prüfe zuerst, ob genug Eiweißfutter zugelassen ist, ob im Vorratsmodus überhaupt Mengen eingetragen sind und ob die Fruchtfolgegrenzen zusammen mindestens 100 % der Fläche zulassen."
+      : r.grund==="unbeschraenkt"
+      ? "Bei einer Kultur liegt der Zukaufspreis unter dem Verkaufspreis — damit wäre Handeln lohnender als Wirtschaften und die Rechnung läuft ins Unendliche. Prüfe die Preise im Reiter Futtermittel gegen die Verkaufspreise im Reiter Flächen."
+      : "Die Rechnung ist nicht durchgelaufen. Suche nach widersprüchlichen Grenzen, etwa einer Mindestfläche über der Höchstfläche.";
+    document.getElementById("btnUebernehmen").disabled=true;
+    return;
+  }
+  S.plan=r;
+  box.className="hinweis zeig gut";
+  box.textContent="Gesamtplan gerechnet in "+Math.round(performance.now()-t0)+" ms. "+
+    (S.modus==="flaeche"
+      ? "Deckungsbeitrag der Fläche abzüglich Futterzukauf: "+z2(-r.ziel,0)+" €."
+      : "Saldo aus Verkaufserlösen und Futterzukauf: "+z2(-r.ziel,0)+" € — Anbaukosten sind in diesem Modus nicht enthalten.");
+  document.getElementById("btnUebernehmen").disabled=false;
+  zeichneErgebnis();
+});
+document.getElementById("btnUebernehmen").addEventListener("click",()=>{
+  if(!S.plan) return;
+  S.gruppeAktiv=S.plan.gruppeKey;
+  S.anteile=S.plan.rezept[S.phaseAktiv].map(v=>Math.round(v*1000)/1000);
+  S.dualKomp=null; S.dualNaehr=null;
+  document.querySelector('.tabs button[data-tab="ration"]').click();
+  zeichnen();
+});
+
+document.getElementById("btnSpeichern").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify({version:2,asModus,S},null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="putenplanung-"+new Date().toISOString().slice(0,10)+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById("btnLadenTrigger").addEventListener("click",()=>document.getElementById("fileLaden").click());
+document.getElementById("fileLaden").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!d.S) throw new Error("Format");
+      S=d.S; asModus=d.asModus||"brutto";
+      document.getElementById("selGruppe").innerHTML="";
+      zeichnen();
+    }catch(err){
+      const box=document.getElementById("gesamtHinweis");
+      box.className="hinweis zeig schlecht";
+      box.textContent="Diese Datei ließ sich nicht lesen. Es muss eine mit diesem Programm gesicherte JSON-Datei sein.";
+    }
+  };
+  rd.readAsText(f); e.target.value="";
+});
+document.getElementById("btnDruck").addEventListener("click",()=>window.print());
+document.getElementById("btnReset").addEventListener("click",()=>{
+  initZustand(); asModus="brutto";
+  document.getElementById("selGruppe").innerHTML="";
+  document.getElementById("optHinweis").className="hinweis";
+  document.getElementById("gesamtHinweis").className="hinweis";
+  zeichnen();
+});
+
+zeichnen();
+</script>
+</body>
+</html>
